@@ -1,0 +1,2 @@
+# tailwind.config.js or tailwind.config.ts should include:
+# content: ['./src/app/**/*.{js,ts,jsx,tsx}', './src/components/**/*.{js,ts,jsx,tsx}', './src/pages/**/*.{js,ts,jsx,tsx}']
