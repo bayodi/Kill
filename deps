@@ -1,0 +1,2 @@
+npm i next react react-dom tailwindcss postcss autoprefixer framer-motion lucide-react
+npx tailwindcss init -p
