@@ -1,0 +1,6 @@
+mkdir -p src/pages
+cat > src/pages/index.tsx <<'TSX'
+'use client'
+/* Paste your KillMissedCallsSite component code here exactly as-is */
+export { default } from '../app/page' // Or paste the whole component here
+TSX
