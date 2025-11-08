@@ -1,0 +1,720 @@
+import React, { useMemo, useState } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { PhoneCall, Waves, Calendar, CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Zap, Signal, ChevronRight, Mail, Building2, User2 } from "lucide-react";
+
+/**
+ * Killmissedcalls.com — Futuristic Minimalist Voice AI Agency
+ * Tech: React + Tailwind + Framer Motion + Lucide Icons
+ * Notes:
+ * - Single-file component ready for Next.js/React apps.
+ * - Uses Tailwind utility classes with a neon/hi-tech aesthetic.
+ * - Hero has a "Call Me Now" instant webhook trigger (window.open).
+ * - Lead Form posts JSON to the provided Make.com webhook.
+ * - Embedded Cal.com scheduler for booking meetings.
+ * - Animated sound waves, signal lines, and a subtle holographic grid.
+ * - Sections: Hero (CTA), Trust/Badges, About, Services, Case Studies, Demo, Booking, FAQ, Footer.
+ * - You can paste this into a Next.js page (e.g., app/page.tsx or pages/index.tsx) and export default.
+ */
+
+// --------- CONFIG: Update these to customize copy or links quickly ---------
+const AGENCY = {
+  name: "Killmissedcalls.com",
+  tagline: "Never miss a call. Ever.",
+  heroHeadline: "Turn missed calls into booked revenue.",
+  heroSub: "Your always-on Voice AI agent answers, qualifies, and books — 24/7 — so you capture every dollar your competitors drop.",
+  // Webhook for instant 'Call Me Now' + form submission target
+  webhookUrl: "https://hook.us2.make.com/thjopq2xfy3tf4uiffj3wbn56kusfw9h",
+  // Cal.com booking link
+  calUrl: "https://cal.com/eazify-systems/30min",
+};
+
+// --------- STYLES: Gradients, glows, and animations ---------
+const neonRing = "shadow-[0_0_60px_rgba(59,130,246,0.35)]"; // blue
+const neonRingGreen = "shadow-[0_0_60px_rgba(34,197,94,0.35)]"; // green
+const glass =
+  "backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl";
+
+// Animated background grid using CSS gradients
+const GridBG = () => (
+  <div
+    aria-hidden
+    className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+  >
+    {/* Subtle dark radial vignette */}
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.18),transparent_40%),radial-gradient(circle_at_80%_120%,rgba(34,197,94,0.12),transparent_35%),radial-gradient(circle_at_0%_100%,rgba(6,182,212,0.14),transparent_30%)]" />
+
+    {/* Thin grid lines */}
+    <div className="absolute inset-0 opacity-[0.12] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:60px_60px]" />
+
+    {/* Animated scanline sweep */}
+    <div className="absolute -inset-x-10 -top-40 h-[280px] rotate-6 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl animate-[sweep_6s_linear_infinite]" />
+    <style>{`
+      @keyframes sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+      @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px);} }
+      @keyframes pulseGlow { 0%,100% { opacity:.5; filter: drop-shadow(0 0 20px rgba(34,197,94,.25)); } 50% { opacity:1; filter: drop-shadow(0 0 35px rgba(34,197,94,.6)); } }
+      @keyframes dash { to { stroke-dashoffset: -1200; } }
+    `}</style>
+  </div>
+);
+
+// SVG Sound Wave (animated) -------------------------------------------------
+const SoundWave = ({ className = "", color = "#22d3ee" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 600 140"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M0 70 C 60 20, 120 120, 180 70 S 300 20, 360 70 480 120, 540 70 600 20 660 70"
+      stroke={color}
+      strokeWidth="2.5"
+      strokeOpacity="0.9"
+      strokeLinecap="round"
+    />
+    <path
+      d="M0 90 C 60 40, 120 140, 180 90 S 300 40, 360 90 480 140, 540 90 600 40 660 90"
+      stroke={color}
+      strokeWidth="1.25"
+      strokeOpacity="0.55"
+    />
+  </svg>
+);
+
+// Animated Signal Lines (dashed moving strokes) -----------------------------
+const SignalLines = ({ className = "" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 1200 300"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.0" />
+        <stop offset="20%" stopColor="#60a5fa" stopOpacity="0.8" />
+        <stop offset="80%" stopColor="#34d399" stopOpacity="0.8" />
+        <stop offset="100%" stopColor="#34d399" stopOpacity="0.0" />
+      </linearGradient>
+    </defs>
+    {[
+      "M0 120 C 200 80 400 160 600 120 800 80 1000 160 1200 120",
+      "M0 160 C 200 120 400 200 600 160 800 120 1000 200 1200 160",
+      "M0 200 C 200 160 400 240 600 200 800 160 1000 240 1200 200",
+    ].map((d, i) => (
+      <path
+        key={i}
+        d={d}
+        fill="none"
+        stroke="url(#g)"
+        strokeWidth={i === 1 ? 2.2 : 1.6}
+        strokeDasharray="12 8"
+        style={{ animation: `dash 14s linear infinite`, animationDelay: `${i * 1.2}s` }}
+      />
+    ))}
+  </svg>
+);
+
+// Simple badge
+const Badge = ({ icon: Icon, children }) => (
+  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white/80 ${neonRing}`}>
+    <Icon className="h-4 w-4 text-emerald-300" />
+    <span className="text-xs">{children}</span>
+  </span>
+);
+
+// Button component with variants
+const Button = ({ children, href, onClick, variant = "primary", className = "", icon: Icon }) => {
+  const base =
+    "group inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-medium transition-all duration-300";
+  const styles = {
+    primary:
+      `text-slate-900 bg-emerald-300 hover:bg-emerald-200 ${neonRingGreen}`,
+    ghost:
+      "text-white/90 hover:text-white border border-white/10 bg-white/5 hover:bg-white/10",
+    outline:
+      "text-emerald-300 border border-emerald-300/40 hover:bg-emerald-300/10",
+  };
+  const content = (
+    <span className={`${base} ${styles[variant]} ${className}`} onClick={onClick}>
+      {Icon && <Icon className="h-5 w-5" />}
+      {children}
+      <ArrowRight className="h-4 w-4 opacity-80 -mr-1 transition-transform group-hover:translate-x-1" />
+    </span>
+  );
+  return href ? (
+    <a href={href} target="_blank" rel="noreferrer" aria-label={typeof children === 'string' ? children : 'Open link'}>
+      {content}
+    </a>
+  ) : (
+    content
+  );
+};
+
+// Input field
+const Input = ({ label, icon: Icon, ...props }) => (
+  <label className="block">
+    <span className="mb-2 flex items-center gap-2 text-sm text-white/70">
+      {Icon && <Icon className="h-4 w-4 text-emerald-300" />}
+      {label}
+    </span>
+    <input
+      {...props}
+      className="w-full rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-300/50 focus:border-emerald-300/60"
+    />
+  </label>
+);
+
+// Textarea field
+const Textarea = ({ label, icon: Icon, ...props }) => (
+  <label className="block">
+    <span className="mb-2 flex items-center gap-2 text-sm text-white/70">
+      {Icon && <Icon className="h-4 w-4 text-emerald-300" />}
+      {label}
+    </span>
+    <textarea
+      {...props}
+      className="w-full min-h-[120px] rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-300/50 focus:border-emerald-300/60"
+    />
+  </label>
+);
+
+// Feature chip
+const Feature = ({ icon: Icon, title, desc }) => (
+  <div className={`p-6 ${glass} ${neonRing}`}>
+    <div className="flex items-center gap-3">
+      <div className="h-10 w-10 rounded-xl bg-emerald-300/10 text-emerald-300 flex items-center justify-center">
+        <Icon className="h-5 w-5" />
+      </div>
+      <h4 className="text-white text-base font-semibold">{title}</h4>
+    </div>
+    <p className="mt-3 text-sm text-white/70 leading-relaxed">{desc}</p>
+  </div>
+);
+
+// Case Study card
+const CaseCard = ({ title, industry, result, metrics, summary }) => (
+  <div className={`p-6 md:p-8 ${glass} hover:bg-white/[.06] transition ${neonRing}`}>
+    <div className="flex items-center justify-between gap-3">
+      <h4 className="text-white text-lg md:text-xl font-semibold">{title}</h4>
+      <Badge icon={Building2}>{industry}</Badge>
+    </div>
+    <p className="mt-4 text-white/80 text-sm leading-relaxed">{summary}</p>
+    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+      {metrics.map((m, i) => (
+        <div key={i} className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs text-white/60">{m.label}</p>
+          <p className="text-white font-semibold text-lg">{m.value}</p>
+        </div>
+      ))}
+    </div>
+    <div className="mt-6 flex items-center gap-2 text-emerald-300 text-sm">
+      <CheckCircle2 className="h-4 w-4" />
+      <span>{result}</span>
+    </div>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
+// MAIN PAGE COMPONENT
+// ---------------------------------------------------------------------------
+export default function KillMissedCallsSite() {
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  const [form, setForm] = useState({ name: "", phone: "", business: "" });
+  const [status, setStatus] = useState({ state: "idle", message: "" });
+
+  const caseStudies = useMemo(
+    () => [
+      {
+        title: "24/7 Coverage for HVAC Pro",
+        industry: "Home Services",
+        summary:
+          "An HVAC contractor missed peak-season calls while crews were onsite. Our Voice AI agent answered instantly, qualified emergencies, and booked next-day slots.",
+        result: "Booked-out schedule within 9 days; zero missed after-hours calls.",
+        metrics: [
+          { label: "Missed Calls → 0", value: "-100%" },
+          { label: "Jobs Booked", value: "+146%" },
+          { label: "Avg. Response", value: "< 1s" },
+          { label: "Revenue Lift (60d)", value: "+$58k" },
+        ],
+      },
+      {
+        title: "Dental Studio: From Voicemail to Value",
+        industry: "Healthcare",
+        summary:
+          "Front-desk bottlenecks sent new patients to voicemail. The agent answered with a friendly tone, verified insurance, and scheduled consults automatically.",
+        result: "New-patient bookings up and chair time utilization stabilized.",
+        metrics: [
+          { label: "New Patients", value: "+72%" },
+          { label: "Voicemail Time", value: "-93%" },
+          { label: "No-Show Rate", value: "-18%" },
+          { label: "90‑Day ROI", value: "4.2x" },
+        ],
+      },
+      {
+        title: "Auto Shop Captures Every Lead",
+        industry: "Automotive",
+        summary:
+          "Busy bays meant phones rang out. The agent quoted wait times, captured VINs, and booked drop-offs — even on weekends.",
+        result: "Higher conversion on first contact and steadier weekly pipeline.",
+        metrics: [
+          { label: "Answered First Ring", value: "99.7%" },
+          { label: "Bookings/Week", value: "+38%" },
+          { label: "Weekend Leads Saved", value: "+61%" },
+          { label: "CSAT", value: "4.8/5" },
+        ],
+      },
+    ],
+    []
+  );
+
+  const handleCallMeNow = () => {
+    // Instant trigger: open webhook URL (per user request)
+    window.open(AGENCY.webhookUrl, "_blank", "noreferrer");
+  };
+
+  const submitForm = async (e) => {
+    e.preventDefault();
+    setStatus({ state: "loading", message: "Connecting your call…" });
+    try {
+      const res = await fetch(AGENCY.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          business: form.business,
+          source: "killmissedcalls.com",
+          intent: "demo:call-request",
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error("Webhook error");
+      setStatus({ state: "success", message: "All set. Our AI will ring you shortly." });
+      setForm({ name: "", phone: "", business: "" });
+    } catch (err) {
+      console.error(err);
+      setStatus({ state: "error", message: "Couldn’t reach the webhook. Try again in a moment." });
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white selection:bg-emerald-300/80 selection:text-slate-900">
+      {/* Global grid & effects */}
+      <GridBG />
+
+      {/* NAVBAR ------------------------------------------------------------- */}
+      <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-slate-950/50">
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-300 to-sky-400 flex items-center justify-center animate-pulse [animation-duration:3s]">
+                <Signal className="h-5 w-5 text-slate-900" />
+              </div>
+              <div>
+                <p className="text-white font-semibold leading-none">{AGENCY.name}</p>
+                <p className="text-xs text-white/60 mt-0.5">{AGENCY.tagline}</p>
+              </div>
+            </div>
+            <nav className="hidden md:flex items-center gap-6 text-sm text-white/70">
+              <a href="#about" className="hover:text-white">About</a>
+              <a href="#services" className="hover:text-white">Services</a>
+              <a href="#cases" className="hover:text-white">Case Studies</a>
+              <a href="#demo" className="hover:text-white">Book a Demo</a>
+              <a href="#booking" className="hover:text-white">Book a Meeting</a>
+            </nav>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" href="#demo" icon={Waves}>
+                Call Me Now
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* HERO --------------------------------------------------------------- */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <motion.div style={{ y }} className="absolute inset-x-0 top-[-6rem]">
+            <SignalLines className="w-[1600px] h-[280px] mx-auto opacity-70" />
+          </motion.div>
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 pt-16 md:pt-24 pb-10">
+          <div className="grid md:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70 text-xs mb-6">
+                <Sparkles className="h-4 w-4 text-emerald-300" />
+                Zero missed calls • 24/7 Voice AI • Revenue you can count
+              </div>
+              <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
+                {AGENCY.heroHeadline}
+              </h1>
+              <p className="mt-5 text-lg text-white/80 max-w-xl">
+                {AGENCY.heroSub}
+              </p>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                <Button icon={PhoneCall} onClick={handleCallMeNow} variant="primary" className="min-w-[220px]">
+                  Call Me Now
+                </Button>
+                <Button icon={Calendar} href="#booking" variant="ghost">
+                  Book a Meeting
+                </Button>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Badge icon={ShieldCheck}>Compliance-ready</Badge>
+                <Badge icon={Zap}>Responds <span className="ml-1 font-semibold text-white">&lt;1s</span></Badge>
+                <Badge icon={Waves}>Natural voice</Badge>
+              </div>
+            </div>
+
+            {/* Right visual: animated waves and glass panel */}
+            <div className="relative">
+              <div className={`relative p-6 md:p-8 ${glass} ${neonRing}`}>
+                <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-emerald-300/10 to-sky-400/10 blur-xl" />
+                <div className="relative">
+                  <SoundWave className="w-full" color="#34d399" />
+                  <SoundWave className="w-full -mt-6" color="#38bdf8" />
+                </div>
+                <p className="mt-6 text-sm text-white/70">
+                  "Hi! You’ve reached your business assistant. How can I help you today? I can book appointments, answer questions, and get you to the right person." 
+                </p>
+                <div className="mt-5 flex gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-emerald-300/10 text-emerald-300 px-3 py-1 text-xs">
+                    <Waves className="h-4 w-4" /> Live signal
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-sky-400/10 text-sky-300 px-3 py-1 text-xs animate-[pulseGlow_2.4s_ease-in-out_infinite]">
+                    <Zap className="h-4 w-4" /> &lt;1s response
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TRUST STRIP -------------------------------------------------------- */}
+      <section className="py-10 md:py-14 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Feature
+              icon={PhoneCall}
+              title="Answer Every Ring"
+              desc="Voice AI that never sleeps. First‑ring pickup, friendly tone, perfect memory."
+            />
+            <Feature
+              icon={ShieldCheck}
+              title="Secure & Compliant"
+              desc="PII handling, opt-in workflows, and audit logs built-in."
+            />
+            <Feature
+              icon={Zap}
+              title="Qualify & Book"
+              desc="Smart questions, CRM notes, and instant calendar invites."
+            />
+            <Feature
+              icon={Waves}
+              title="Sounds Human"
+              desc="Natural cadence, accents on point, brand voice tuned to you."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ABOUT -------------------------------------------------------------- */}
+      <section id="about" className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="relative">
+              <div className={`p-8 ${glass} ${neonRing}`}>
+                <h3 className="text-2xl md:text-3xl font-semibold">
+                  About {AGENCY.name}
+                </h3>
+                <p className="mt-4 text-white/80 leading-relaxed">
+                  We help small businesses stop leaking revenue from missed calls. Our Voice AI agent answers instantly, understands intent, captures details, and books appointments straight into your calendar. No hold music. No voicemail abyss. Just high‑speed, high‑quality service every hour of the day.
+                </p>
+                <ul className="mt-6 space-y-3 text-white/80">
+                  <li className="flex items-start gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-300 mt-0.5" /> 24/7 coverage so you never miss another lead — weekends and after‑hours included.</li>
+                  <li className="flex items-start gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-300 mt-0.5" /> Conversational, friendly, and consistent — always on brand.</li>
+                  <li className="flex items-start gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-300 mt-0.5" /> Real outcomes: more bookings, faster response, happier customers.</li>
+                </ul>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-10 -z-10 opacity-60">
+                <SignalLines />
+              </div>
+              <div className={`p-8 ${glass} ${neonRing}`}>
+                <h4 className="text-white/90 font-semibold">Built for Small Businesses</h4>
+                <p className="mt-3 text-white/70 text-sm leading-relaxed">
+                  From HVAC and dental to auto repair and salons, we specialize in owners who can’t afford to miss a single call. Your next job is likely ringing right now — we make sure it’s answered.
+                </p>
+                <div className="mt-6 grid grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-white/60 text-xs">Avg. pickup</p>
+                    <p className="text-white font-semibold text-xl">&lt;1s</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-white/60 text-xs">Coverage</p>
+                    <p className="text-white font-semibold text-xl">24/7/365</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-white/60 text-xs">Appointment Accuracy</p>
+                    <p className="text-white font-semibold text-xl">99.3%</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-white/60 text-xs">CSAT</p>
+                    <p className="text-white font-semibold text-xl">4.8/5</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SERVICES ----------------------------------------------------------- */}
+      <section id="services" className="py-20 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-3xl">
+            <h3 className="text-2xl md:text-3xl font-semibold">Services</h3>
+            <p className="mt-3 text-white/80">
+              Exactly what you need to turn calls into confirmed revenue.
+            </p>
+          </div>
+          <div className="mt-10 grid md:grid-cols-3 gap-6">
+            <Feature
+              icon={PhoneCall}
+              title="Instant Answering"
+              desc="First-ring pickup with natural voice. No IVR maze, no awkward gaps."
+            />
+            <Feature
+              icon={Zap}
+              title="Lead Qualification"
+              desc="Intelligent questions gather name, need, urgency, and availability."
+            />
+            <Feature
+              icon={Calendar}
+              title="Live Scheduling"
+              desc="Books directly into your calendar and sends confirmations + reminders."
+            />
+            <Feature
+              icon={ShieldCheck}
+              title="Secure Handling"
+              desc="PII-safe workflows, consent capture, and data minimization."
+            />
+            <Feature
+              icon={Waves}
+              title="Brand Voice"
+              desc="Warm, friendly, and tuned to your industry. Multilingual ready."
+            />
+            <Feature
+              icon={Sparkles}
+              title="Analytics"
+              desc="Call insights, booking rates, and revenue attribution you can trust."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CASE STUDIES ------------------------------------------------------- */}
+      <section id="cases" className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-3xl">
+            <h3 className="text-2xl md:text-3xl font-semibold">Success Stories</h3>
+            <p className="mt-3 text-white/80">
+              Real small businesses eliminating missed calls and booking more work.
+            </p>
+          </div>
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {caseStudies.map((c, i) => (
+              <CaseCard key={i} {...c} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* DEMO (CALL ME NOW + FORM) ----------------------------------------- */}
+      <section id="demo" className="py-20 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-start">
+            {/* Instant call trigger */}
+            <div className={`p-8 ${glass} ${neonRing}`}>
+              <h3 className="text-xl md:text-2xl font-semibold">Call Me Now</h3>
+              <p className="mt-3 text-white/80 text-sm">
+                Experience the agent live. We’ll instantly connect you via our demo flow.
+              </p>
+              <div className="mt-6">
+                <Button icon={PhoneCall} onClick={handleCallMeNow} variant="primary" className="w-full justify-center">
+                  Call Me Now
+                </Button>
+              </div>
+              <div className="mt-6">
+                <SignalLines className="opacity-70" />
+              </div>
+            </div>
+
+            {/* Lead capture form */}
+            <div className={`p-8 ${glass} ${neonRing}`}>
+              <h3 className="text-xl md:text-2xl font-semibold">Request a Demo Call</h3>
+              <p className="mt-3 text-white/80 text-sm">
+                Prefer we ring you instead? Leave your details and our Voice AI will call to walk you through a demo.
+              </p>
+              <form onSubmit={submitForm} className="mt-6 space-y-4">
+                <Input
+                  label="Your Name"
+                  icon={User2}
+                  placeholder="Alex Smith"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="Mobile or Business Number"
+                  icon={PhoneCall}
+                  placeholder="(555) 123-4567"
+                  value={form.phone}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="Business Name"
+                  icon={Building2}
+                  placeholder="Peak HVAC Co."
+                  value={form.business}
+                  onChange={(e) => setForm((f) => ({ ...f, business: e.target.value }))}
+                  required
+                />
+                <div className="flex items-center gap-3 pt-2">
+                  <Button icon={Waves} variant="primary">
+                    Call Me For a Demo
+                  </Button>
+                  <Button icon={ChevronRight} variant="ghost" href={AGENCY.calUrl}>
+                    Book 30‑min Instead
+                  </Button>
+                </div>
+                <p className="h-6 text-sm">
+                  {status.state === "loading" && (
+                    <span className="text-sky-300">{status.message}</span>
+                  )}
+                  {status.state === "success" && (
+                    <span className="text-emerald-300">{status.message}</span>
+                  )}
+                  {status.state === "error" && (
+                    <span className="text-rose-300">{status.message}</span>
+                  )}
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* BOOKING (CAL.COM) -------------------------------------------------- */}
+      <section id="booking" className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-3xl">
+            <h3 className="text-2xl md:text-3xl font-semibold">Book an Appointment</h3>
+            <p className="mt-3 text-white/80">
+              Prefer a scheduled walkthrough? Grab a time that works for you.
+            </p>
+          </div>
+
+          <div className={`mt-8 p-2 md:p-4 ${glass} ${neonRing}`}>
+            <iframe
+              title="Cal.com Scheduler"
+              src={AGENCY.calUrl}
+              className="w-full h-[720px] rounded-xl border border-white/10"
+            />
+            <div className="flex justify-end mt-4">
+              <Button href={AGENCY.calUrl} variant="outline" icon={Calendar}>
+                Open in Cal.com
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ ---------------------------------------------------------------- */}
+      <section id="faq" className="py-20 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid md:grid-cols-2 gap-10">
+            <div>
+              <h3 className="text-2xl md:text-3xl font-semibold">FAQ</h3>
+              <p className="mt-3 text-white/80">
+                Quick answers to common questions.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <div className={`p-6 ${glass}`}>
+                <h4 className="font-semibold">How fast does the agent answer?</h4>
+                <p className="mt-2 text-white/80 text-sm">Generally within a second. The AI is always on, so no more rings slipping into voicemail.</p>
+              </div>
+              <div className={`p-6 ${glass}`}>
+                <h4 className="font-semibold">Can it book straight into my calendar?</h4>
+                <p className="mt-2 text-white/80 text-sm">Yes. We integrate with your calendar to offer live availability, schedule appointments, and send reminders.</p>
+              </div>
+              <div className={`p-6 ${glass}`}>
+                <h4 className="font-semibold">Will it sound human?</h4>
+                <p className="mt-2 text-white/80 text-sm">We tune tone and phrasing to your brand and industry. Most callers assume they’re speaking with a highly trained receptionist.</p>
+              </div>
+              <div className={`p-6 ${glass}`}>
+                <h4 className="font-semibold">What about after-hours and weekends?</h4>
+                <p className="mt-2 text-white/80 text-sm">That’s where we shine — 24/7 coverage ensures every lead is captured, even when you’re closed.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER ------------------------------------------------------------- */}
+      <footer className="pt-16 pb-10 border-t border-white/10">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid md:grid-cols-3 gap-10">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-300 to-sky-400 flex items-center justify-center">
+                  <Signal className="h-5 w-5 text-slate-900" />
+                </div>
+                <p className="font-semibold">{AGENCY.name}</p>
+              </div>
+              <p className="mt-3 text-white/70 text-sm max-w-sm">
+                {AGENCY.tagline} — built for small businesses that can’t afford to miss a single opportunity.
+              </p>
+            </div>
+            <div>
+              <h5 className="font-semibold">Explore</h5>
+              <ul className="mt-3 space-y-2 text-white/70 text-sm">
+                <li><a href="#about" className="hover:text-white">About</a></li>
+                <li><a href="#services" className="hover:text-white">Services</a></li>
+                <li><a href="#cases" className="hover:text-white">Case Studies</a></li>
+                <li><a href="#demo" className="hover:text-white">Book a Demo</a></li>
+                <li><a href="#booking" className="hover:text-white">Book a Meeting</a></li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="font-semibold">Contact</h5>
+              <ul className="mt-3 space-y-2 text-white/70 text-sm">
+                <li className="flex items-center gap-2"><Mail className="h-4 w-4 text-emerald-300" /> hello@killmissedcalls.com</li>
+                <li className="flex items-center gap-2"><PhoneCall className="h-4 w-4 text-emerald-300" /> (555) 000‑0000</li>
+              </ul>
+              <div className="mt-4">
+                <Button href="#demo" variant="outline" icon={Waves}>Get a Demo</Button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
+            <p>© {new Date().getFullYear()} {AGENCY.name}. All rights reserved.</p>
+            <div className="flex items-center gap-3">
+              <a href="#" className="hover:text-white/80">Privacy</a>
+              <a href="#" className="hover:text-white/80">Terms</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
